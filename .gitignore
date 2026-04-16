@@ -1,2 +1,4 @@
 *.wav
 *.pdf
+/exp3/Facodec/Facodec/ckpt/
+*.zip
