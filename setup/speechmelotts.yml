@@ -1,0 +1,19 @@
+# speechmelotts —— 单独覆盖 exp4 (MeloTTS)
+# MeloTTS 钉死了一整套旧依赖 (transformers==4.27.4, librosa==0.9.1 等)，必须独立环境
+# Python 3.9 (MeloTTS 官方推荐)
+# 创建步骤:
+#   1) conda env create -f setup/speechmelotts.yml
+#   2) conda run -n speechmelotts pip install -e exp4/MeloTTS-Homework
+#      (会拉取 MeloTTS 的全部钉死依赖; torch 已装好不会被覆盖)
+#   3) dicdir 已随仓库提供; 如缺失再: conda run -n speechmelotts python -m unidic download
+name: speechmelotts
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pip
+  - pip:
+      - --extra-index-url https://download.pytorch.org/whl/cu118
+      - torch==2.1.2+cu118
+      - torchaudio==2.1.2+cu118
+      - ipykernel

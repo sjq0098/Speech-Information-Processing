@@ -1,0 +1,24 @@
+# speechbrain —— 单独覆盖 exp5 (说话人识别 ECAPA-TDNN)
+# 用 PyPI 稳定版 speechbrain; 统一 torch 2.1.2 + cu118
+# 注意: 实验讲义里列了 torchcodec, 但它在 Windows 上依赖系统 FFmpeg 共享库, 易出错;
+#       这里改用 soundfile 后端读音频, notebooks 用 torchaudio.load() 即可, 不需要 torchcodec。
+# 创建: conda env create -f setup/speechbrain.yml
+name: speechbrain
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - --extra-index-url https://download.pytorch.org/whl/cu118
+      - torch==2.1.2+cu118
+      - torchaudio==2.1.2+cu118
+      - speechbrain
+      - huggingface-hub
+      - pandas
+      - scikit-learn
+      - matplotlib
+      - tqdm
+      - soundfile
+      - "numpy<2"
+      - ipykernel
