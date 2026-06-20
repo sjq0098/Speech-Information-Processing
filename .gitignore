@@ -1,17 +1,29 @@
+# ===== 二进制 / 大文件类型 =====
 *.wav
 *.pdf
-/exp3/Facodec/Facodec/ckpt/
 *.zip
-exp5/lab5/data/
-exp6/dataset/
 *.pptx
-setup/wheels/torch-2.1.2+cu118-cp39-cp39-win_amd64.whl
-setup/wheels/torch-2.1.2+cu118-cp310-cp310-win_amd64.whl
-setup/wheels/torchaudio-2.1.2+cu118-cp39-cp39-win_amd64.whl
-setup/wheels/torchaudio-2.1.2+cu118-cp310-cp310-win_amd64.whl
-setup/wheels/torchvision-0.16.2+cu118-cp310-cp310-win_amd64.whl
+
+# ===== Python 缓存 =====
+__pycache__/
+*.pyc
+
+# ===== exp2: 数据与模型权重 =====
 exp2/data/
 exp2/models/
 exp2/checkpoints/
 exp2/tang.npz
-__pycache__/
+
+# ===== exp3: FACodec 预训练权重 & ASV 说话人模型(大文件) =====
+exp3/Facodec/Facodec/ckpt/
+exp3/Facodec/Facodec/asv_ckpt/
+
+# ===== exp5 / exp6: 数据集 =====
+exp5/lab5/data/
+exp6/dataset/
+
+# ===== setup: 离线安装 wheel =====
+setup/wheels/
+
+# ===== 报告源文件(在 Overleaf 编辑, 不纳入版本库) =====
+exp3/exp3.tex
