@@ -3,6 +3,9 @@
 *.pdf
 *.zip
 *.pptx
+*.onnx
+*.tar.bz2
+*.tar.gz
 
 # ===== Python 缓存 =====
 __pycache__/
@@ -18,6 +21,11 @@ exp2/tang.npz
 exp3/Facodec/Facodec/ckpt/
 exp3/Facodec/Facodec/asv_ckpt/
 
+# ===== exp4: ONNX 导出/下载的模型、词典与预训练权重(大文件, 可重新生成) =====
+exp4/onnx_export/
+# ===== exp4: 运行输出(音频/日志/评测数据, 可重新生成) =====
+exp4/outputs/
+
 # ===== exp5 / exp6: 数据集 =====
 exp5/lab5/data/
 exp6/dataset/
@@ -27,3 +35,4 @@ setup/wheels/
 
 # ===== 报告源文件(在 Overleaf 编辑, 不纳入版本库) =====
 exp3/exp3.tex
+exp4/exp4.tex
