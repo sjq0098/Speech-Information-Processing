@@ -2,6 +2,7 @@
 *.wav
 *.pdf
 *.zip
+*.rar
 *.pptx
 *.onnx
 *.tar.bz2
@@ -29,6 +30,13 @@ exp4/outputs/
 # ===== exp5 / exp6: 数据集 =====
 exp5/lab5/data/
 exp6/dataset/
+
+# ===== exp6: 训练产物 / 评测输出 / 日志(大文件, 可重新生成) =====
+exp6/ckpt/
+exp6/ckpt_postln_baseline/
+exp6/ckpt_postln_lr1e4/
+exp6/outputs/
+exp6/*_run.log
 
 # ===== setup: 离线安装 wheel =====
 setup/wheels/

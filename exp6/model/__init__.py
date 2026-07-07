@@ -105,26 +105,31 @@ class ASRTransformerCTC(nn.Module):
         num_encoder_layers=6, # Encoder层数
         dim_feedforward=2048, # 前馈网络维度
         dropout=0.1,
-        vocab_size=1000      # 词表大小
+        vocab_size=1000,     # 词表大小
+        norm_first=False     # True=Pre-LN，从零训练更稳，默认 False 保持原行为
     ):
         super().__init__()
         self.d_model = d_model
-        
+
         # A. 卷积下采样 (4倍)
         self.subsampling = ConvSubsampling(input_dim=input_dim, d_model=d_model)
-        
+
         # B. 位置编码
         self.pos_encoder = PositionalEncoding(d_model, dropout)
-        
+
         # C. Transformer Encoder
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=d_model,
             nhead=nhead,
             dim_feedforward=dim_feedforward,
             dropout=dropout,
-            batch_first=False # 注意：PyTorch默认是 [SeqLen, Batch, Dim]
+            batch_first=False, # 注意：PyTorch默认是 [SeqLen, Batch, Dim]
+            norm_first=norm_first
         )
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_encoder_layers)
+        # Pre-LN 堆栈末尾需要一个最终 LayerNorm，否则残差流不归一化就进 CTC 头
+        final_norm = nn.LayerNorm(d_model) if norm_first else None
+        self.transformer_encoder = nn.TransformerEncoder(
+            encoder_layer, num_layers=num_encoder_layers, norm=final_norm)
         
         # D. CTC 输出头
         self.ctc_head = nn.Linear(d_model, vocab_size)
