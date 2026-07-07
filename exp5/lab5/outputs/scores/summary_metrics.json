@@ -1,0 +1,21 @@
+{
+  "tau": 0.4357,
+  "dev_eer": 0.0,
+  "test_far": 0.0417,
+  "test_frr": 0.0,
+  "test_acc": 0.9792,
+  "n_test_trials": 96,
+  "n_test_pos": 48,
+  "n_test_neg": 48,
+  "test_false_accepts": 2,
+  "test_false_rejects": 0,
+  "closed_acc": 1.0,
+  "n_closed": 64,
+  "n_known": 64,
+  "n_unknown": 16,
+  "known_ok": 64,
+  "unk_reject": 11,
+  "unk_leak": 5,
+  "open_known_acc": 1.0,
+  "open_unk_reject_rate": 0.6875
+}
