@@ -226,6 +226,24 @@ speechbrain 1.1.0），推理运行于 GPU（NVIDIA RTX 4060 Laptop）。SpeechB
 逐句均值方差归一化、送入 ECAPA-TDNN 得到嵌入。本实验对输出再做一次 L2 归一化，
 使后续可以直接用点积算余弦相似度。对示例音频提取得到形状 \texttt{torch.Size([192])} 的嵌入，归一化后范数为 1。
 
+\noindent 模型加载与嵌入提取的核心代码如下：
+\begin{lstlisting}[title=模型加载与说话人嵌入提取（课程一）,frame=trbl,language={Python}]
+# 兼容性 shim: 让 SpeechBrain 1.1.0 的 torch.amp.custom_fwd(device_type=...) 在 torch 2.1.2 下可用
+_install_amp_shim()          # 将 torch.amp.custom_fwd / custom_bwd 转发到 torch.cuda.amp
+
+classifier = EncoderClassifier.from_hparams(
+    source=str(CKPT_DIR), savedir=str(CKPT_DIR),
+    run_opts={"device": device},
+    local_strategy=LocalStrategy.NO_LINK)   # Windows 下用 NO_LINK 避免软链接权限问题
+
+@torch.no_grad()
+def extract_embedding_from_path(path):
+    wav, sr = torchaudio.load(path)
+    wavs = wav.squeeze(0).unsqueeze(0).to(device)
+    emb = classifier.encode_batch(wavs).squeeze().detach().cpu()   # ECAPA-TDNN 得到 192 维嵌入
+    return F.normalize(emb, dim=0)     # L2 归一化, 便于后续用点积直接算余弦相似度
+\end{lstlisting}
+
 \subsection{思考题}
 \textbf{Q1（waveform 取值范围与幅度归一化）} \quad
 \texttt{torchaudio.load()} 默认返回 \texttt{float32}、形状为 \texttt{[channel, time]} 的张量，取值在 $[-1,1]$；
@@ -266,6 +284,26 @@ CN-Celeb 的说话人数。\texttt{encode\_batch} 只走到 \texttt{embedding\_m
 （pitch shift，$+4$ 半音，直接改变基频和共振峰位置）。把干净嵌入和扰动嵌入放进同一次 t-SNE 投影
 （图~\ref{fig:tsne_joint}），并用 $1-\cos(\text{干净},\text{扰动})$ 度量逐句嵌入漂移，
 按扰动类型统计见表~\ref{tab:drift}，箱线图见图~\ref{fig:drift}。
+
+\noindent 三种扰动与嵌入漂移度量的核心代码如下：
+\begin{lstlisting}[title=三种扰动与嵌入漂移的度量（课程二）,frame=trbl,language={Python}]
+def add_white_noise_snr(wav, snr_db):            # 加性白噪声, 按 SNR 缩放
+    noise = torch.randn_like(wav)
+    scale = torch.sqrt((wav**2).mean() / ((noise**2).mean() * 10**(snr_db/10)))
+    noisy = wav + scale * noise
+    return noisy / (noisy.abs().max() + 1e-8)
+
+def simulate_8k_channel(wav):                    # 16k -> 8k -> 16k, 模拟带宽受限信道
+    down = torchaudio.transforms.Resample(16000, 8000)(wav)
+    return torchaudio.transforms.Resample(8000, 16000)(down)
+
+pitch_shift = torchaudio.transforms.PitchShift(16000, n_steps=4)   # 自选扰动: +4 半音变调
+
+# 嵌入漂移量: 1 - cos(clean, perturbed), 越大表示偏离越多
+cos = float(np.dot(clean_emb, aug_emb) /
+            (np.linalg.norm(clean_emb) * np.linalg.norm(aug_emb) + 1e-8))
+drift = 1 - cos
+\end{lstlisting}
 
 \begin{table}[H]
   \centering
@@ -332,6 +370,29 @@ t-SNE 用标记形状表示性别，可以看到男女在空间中有一定的�
 \end{equation}
 平均相当于对随机的信道和内容扰动做平滑，得到更稳定的身份表示。
 
+\noindent 模板构建、余弦打分与在 dev 上确定 EER 阈值的核心代码如下：
+\begin{lstlisting}[title=说话人模板、余弦打分与 dev 上的 EER 阈值扫描（课程三）,frame=trbl,language={Python}]
+# 说话人模板: 多条 enrollment 嵌入取平均, 再做一次 L2 归一化
+template = F.normalize(torch.stack(embs, dim=0).mean(dim=0), dim=0)
+
+def cosine_score(e1, e2):
+    return torch.dot(F.normalize(e1, dim=0), F.normalize(e2, dim=0)).item()
+
+# 在 dev 上扫描 300 个候选阈值, 取 |FAR - FRR| 最小处作为 tau*
+def compute_far_frr(scores, labels, thresholds):
+    rows = []
+    for tau in thresholds:
+        pred_same = scores >= tau
+        far = ((pred_same == 1) & (labels == 0)).sum() / max((labels == 0).sum(), 1)
+        frr = ((pred_same == 0) & (labels == 1)).sum() / max((labels == 1).sum(), 1)
+        rows.append({"threshold": tau, "FAR": far, "FRR": frr, "abs_diff": abs(far - frr)})
+    return pd.DataFrame(rows)
+
+thresholds = np.linspace(dev_scores["score"].min(), dev_scores["score"].max(), 300)
+dev_curve  = compute_far_frr(dev_scores["score"], dev_scores["label"], thresholds)
+tau = dev_curve.iloc[dev_curve["abs_diff"].argmin()]["threshold"]   # 固定用于 test, 不在 test 上调阈值
+\end{lstlisting}
+
 \subsection{说话人验证：EER 与阈值}
 对每条 trial，用模板和测试嵌入的余弦相似度打分。在 dev 集上扫描 300 个候选阈值，
 取 $|\text{FAR}-\text{FRR}|$ 最小处得 $\tau^\ast=0.4357$，此时 dev EER 接近 0，
@@ -395,7 +456,14 @@ t-SNE 用标记形状表示性别，可以看到男女在空间中有一定的�
 \subsection{加分项：嵌入之上的线性分类头}
 加分项冻结 ECAPA 嵌入，在 \texttt{bonus\_train.csv} 的训练和验证划分上训练一个逻辑回归分类头，
 做 16 类闭集说话人分类，训练和验证准确率都是 100\%。
-这说明预训练嵌入已经高度线性可分，不微调主干、只加一个线性头就能得到很高的闭集准确率。
+这说明预训练嵌入已经高度线性可分，不微调主干、只加一个线性头就能得到很高的闭集准确率。核心代码如下：
+\begin{lstlisting}[title=加分项：冻结嵌入之上的线性分类头（课程三）,frame=trbl,language={Python}]
+# 冻结 ECAPA 嵌入, 只训练一个逻辑回归线性头做 16 类闭集说话人分类
+from sklearn.linear_model import LogisticRegression
+Xtr = np.stack([get_embedding_by_path(p).numpy() for p in train_paths])
+head = LogisticRegression(max_iter=3000, C=10.0).fit(Xtr, ytr)
+print(head.score(Xtr, ytr), head.score(Xva, yva))   # train / val acc = 1.0 / 1.0
+\end{lstlisting}
 
 \subsection{思考题}
 \textbf{Q1（单条 enrollment 的模板）} \quad
